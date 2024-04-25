@@ -28,7 +28,7 @@ namespace AffinityPatcher
         static async Task<int> Main(string[] args)
         {
             var rootCommand =
-                new RootCommand("Simple application for patching license activation amongst Affinity v2.x products.");
+                new RootCommand("Simple application for patching license activation amongst Affinity v2.x/v1.x products.");
 
             var inputOptions = new Option<DirectoryInfo?>("--input",
                     description: "Target Affinity directory (i.e., path containing Photo/Designer.exe).")
@@ -64,6 +64,10 @@ namespace AffinityPatcher
         {
             var targetPath = Path.Join(directoryInfo?.FullName, "Serif.Interop.Persona.dll");
             var fi = new FileInfo(targetPath);
+            if (fi.Exists) return fi;
+            // use the backup file if one exists
+            targetPath = Path.Join(directoryInfo?.FullName, "Serif.Interop.Persona.dll.bak");
+            fi = new FileInfo(targetPath);
             return fi.Exists ? fi : null;
         }
 
@@ -81,11 +85,11 @@ namespace AffinityPatcher
             {
                 var patchedList = new List<string>();
                 var application = module.Types.FirstOrDefault(x => x.FullName == "Serif.Interop.Persona.Application");
-                var methodsToPatch = application?.Methods.Where(x =>
+                var methodsToPatchToTrue = application?.Methods.Where(x =>
                     x.Name == "HasEntitlementToRun" || x.Name == "CheckEula" || x.Name == "CheckAnalytics");
-                if (methodsToPatch != null)
+                if (methodsToPatchToTrue != null)
                 {
-                    foreach (var method in methodsToPatch)
+                    foreach (var method in methodsToPatchToTrue)
                     {
                         if (verbose)
                         {
@@ -94,6 +98,23 @@ namespace AffinityPatcher
                         }
 
                         PatchWithLdcRet(method.Body, 1);
+                        patchedList.Add(method.FullName);
+                    }
+                }
+
+                var methodsToPatchToFalse = application?.Methods.Where(x => x.Name == "get_AllowsOptInAnalytics");
+                if (methodsToPatchToFalse != null)
+                {
+                    
+                    foreach (var method in methodsToPatchToFalse)
+                    {
+                        if (verbose)
+                        {
+                            AnsiConsole.MarkupLine(
+                                $"Located [grey]{method.FullName}[/], patching with [grey]\"return false\"[/].");
+                        }
+
+                        PatchWithLdcRet(method.Body, 0);
                         patchedList.Add(method.FullName);
                     }
                 }
@@ -137,6 +158,10 @@ namespace AffinityPatcher
                 AnsiConsole.Write(panel);
             }
 
+            if (targetFile.EndsWith(".bak"))
+            {
+                targetFile = targetFile.Replace(".bak", "");
+            }
             File.Move(tempOutput, targetFile, overwrite: true);
 
             AnsiConsole.MarkupLine(
