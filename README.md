@@ -10,6 +10,8 @@ Simple application for patching license activation amongst Affinity v2.x/v1.x pr
 
 ## Usage
 
+- You can get the latest installer/MSIX package from [Serif](http://affin.co/photo2-win-dl).
+
 ```
 Description:
   Simple application for patching license activation amongst Affinity v2.x/v1.x products.
