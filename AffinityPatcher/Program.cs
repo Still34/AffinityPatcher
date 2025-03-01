@@ -1,6 +1,7 @@
 ﻿using System.CommandLine;
 using System.CommandLine.Invocation;
 using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using dnlib.DotNet;
 using dnlib.DotNet.Emit;
@@ -12,27 +13,14 @@ namespace AffinityPatcher
 {
     internal class Program
     {
-        // Token: 0x02000502 RID: 1282
-        public enum CrashReportUploadPolicy
-        {
-            // Token: 0x04009C1F RID: 39967
-            User,
-
-            // Token: 0x04009C20 RID: 39968
-            Always,
-
-            // Token: 0x04009C21 RID: 39969
-            Never
-        }
-
         static async Task<int> Main(string[] args)
         {
             var rootCommand =
-                new RootCommand("Simple application for patching license activation amongst Affinity v2.x/v1.x products.");
+                new RootCommand("Simple application for patching license activation against DxO PhotoLab.");
 
             var inputOptions = new Option<DirectoryInfo?>("--input",
-                    description: "Target Affinity directory (i.e., path containing Photo/Designer.exe).")
-                { IsRequired = true };
+                    description: "Target DxO PhotoLab directory (i.e., path containing DxO.PhotoLab.exe).")
+            { IsRequired = true };
             var verboseOptions = new Option<bool>("--verbose", description: "Enable verbose logging.");
             var backupOptions = new Option<bool>("--keep", description: "Backup original assembly.");
 
@@ -44,94 +32,94 @@ namespace AffinityPatcher
             {
                 if (di is not { Exists: true })
                 {
-                    throw new DirectoryNotFoundException("Cannot find the target Affinity directory.");
+                    throw new DirectoryNotFoundException("Cannot find the target DxO directory.");
                 }
 
-                var personaAssembly = FindPersonaAssembly(di);
-                if (personaAssembly == null)
+                var activationAssembly = FindActivationAssembly("DxO.PhotoLab.Activation.dll", di);
+                var activationInteropAssembly = FindActivationAssembly("DxO.PhotoLab.Activation.Interop.dll", di);
+                if (activationAssembly == null || activationInteropAssembly == null)
                 {
                     throw new FileNotFoundException("Cannot find the required assembly.");
                 }
 
-                PatchPersonaAssembly(personaAssembly.FullName, verbose: shouldVerbose, keepOriginal: shouldBackup);
+                PatchActivationAssembly(activationAssembly.FullName, verbose: shouldVerbose, keepOriginal: shouldBackup);
+                PatchActivationAssembly(activationInteropAssembly.FullName, verbose: shouldVerbose, keepOriginal: shouldBackup);
             }, inputOptions, verboseOptions, backupOptions);
 
 
             return await rootCommand.InvokeAsync(args);
         }
 
-        static FileInfo? FindPersonaAssembly(DirectoryInfo? directoryInfo)
+        static FileInfo? FindActivationAssembly(string dllName, DirectoryInfo? directoryInfo)
         {
-            var targetPath = Path.Join(directoryInfo?.FullName, "Serif.Interop.Persona.dll");
+            // use the backup file if one exists
+            var targetPath = Path.Join(directoryInfo?.FullName, $"{dllName}.bak");
             var fi = new FileInfo(targetPath);
             if (fi.Exists) return fi;
-            // use the backup file if one exists
-            targetPath = Path.Join(directoryInfo?.FullName, "Serif.Interop.Persona.dll.bak");
+            // fallback to using default
+            targetPath = Path.Join(directoryInfo?.FullName, dllName);
             fi = new FileInfo(targetPath);
             return fi.Exists ? fi : null;
         }
 
-        static void PatchPersonaAssembly(string targetFile, bool verbose, bool keepOriginal)
+        static void PatchActivationAssembly(string targetFile, bool verbose, bool keepOriginal)
         {
             if (keepOriginal)
             {
                 File.Copy(targetFile, targetFile + ".bak", overwrite: true);
                 AnsiConsole.MarkupLine("[green]Backed up original assembly.[/]");
             }
-
             var moduleContext = ModuleDef.CreateModuleContext();
             var tempOutput = Path.GetTempFileName();
             using (var module = ModuleDefMD.Load(targetFile, moduleContext))
             {
                 var patchedList = new List<string>();
-                var application = module.Types.FirstOrDefault(x => x.FullName == "Serif.Interop.Persona.Application");
-                var methodsToPatchToTrue = application?.Methods.Where(x =>
-                    x.Name == "HasEntitlementToRun" || x.Name == "CheckEula" || x.Name == "CheckAnalytics");
-                if (methodsToPatchToTrue != null)
+                var features = module.Types.Where(x => x.FullName.Contains("DxO.PhotoLab.Activation.Feature") || x.FullName.Contains("DxOActivation.Activation"));
+                foreach (var feature in features)
                 {
-                    foreach (var method in methodsToPatchToTrue)
+                    var methodsToPatchToTrue = feature?.Methods.Where(x => x.Name.EndsWith("IsValid") || x.Name.EndsWith("HasAnyLicense") || x.Name.EndsWith("IsActivated"));
+                    if (methodsToPatchToTrue != null)
                     {
-                        if (verbose)
+                        foreach (var method in methodsToPatchToTrue)
                         {
-                            AnsiConsole.MarkupLine(
-                                $"Located [grey]{method.FullName}[/], patching with [grey]\"return true\"[/].");
+                            if (verbose)
+                            {
+                                AnsiConsole.MarkupLine(
+                                    $"Located [grey]{method.FullName}[/], patching with [grey]\"return true\"[/].");
+                            }
+                            PatchWithLdcRet(method.Body, 1);
+                            patchedList.Add(method.FullName);
                         }
-
-                        PatchWithLdcRet(method.Body, 1);
-                        patchedList.Add(method.FullName);
                     }
-                }
-
-                var methodsToPatchToFalse = application?.Methods.Where(x => x.Name == "get_AllowsOptInAnalytics");
-                if (methodsToPatchToFalse != null)
-                {
-                    
-                    foreach (var method in methodsToPatchToFalse)
+                    var methodsToPatchToFalse = feature?.Methods.Where(x => x.Name.EndsWith("IsExpired") || x.Name.EndsWith("IsDemo") || x.Name.EndsWith("IsTemporary") || x.Name == "Check");
+                    if (methodsToPatchToFalse != null)
                     {
-                        if (verbose)
+                        foreach (var method in methodsToPatchToFalse)
                         {
-                            AnsiConsole.MarkupLine(
-                                $"Located [grey]{method.FullName}[/], patching with [grey]\"return false\"[/].");
+                            if (verbose)
+                            {
+                                AnsiConsole.MarkupLine(
+                                    $"Located [grey]{method.FullName}[/], patching with [grey]\"return false\"[/].");
+                            }
+                            PatchWithLdcRet(method.Body, 0);
+                            patchedList.Add(method.FullName);
                         }
-
-                        PatchWithLdcRet(method.Body, 0);
-                        patchedList.Add(method.FullName);
                     }
-                }
-
-                var crashPolicy = application?.Methods.FirstOrDefault(x => x.Name == "GetCrashReportUploadPolicy");
-                if (crashPolicy != null)
-                {
-                    if (verbose)
+                    var methodsToPatchToSpecifiedAmount = feature?.Methods.Where(x => x.Name.EndsWith("RemainingDays") || x.Name == "RemainingOfflineDays");
+                    if (methodsToPatchToSpecifiedAmount != null)
                     {
-                        AnsiConsole.MarkupLine(
-                            $"Located [grey]{crashPolicy.FullName}[/], patching as [grey]{CrashReportUploadPolicy.Never.Humanize()}.[/]");
+                        foreach (var method in methodsToPatchToSpecifiedAmount)
+                        {
+                            if (verbose)
+                            {
+                                AnsiConsole.MarkupLine(
+                                    $"Located [grey]{method.FullName}[/], patching with [grey]\"99\"[/].");
+                            }
+                            PatchWithLdcRet(method.Body, 99);
+                            patchedList.Add(method.FullName);
+                        }
                     }
-
-                    PatchWithLdcRet(crashPolicy.Body, (int)CrashReportUploadPolicy.Never);
-                    patchedList.Add(crashPolicy.FullName);
                 }
-
                 AnsiConsole.Status().Spinner(Spinner.Known.Aesthetic)
                     .Start("Saving assembly...", x =>
                     {
