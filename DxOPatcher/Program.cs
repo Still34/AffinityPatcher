@@ -50,13 +50,14 @@ namespace DxOPatcher
         static FileInfo? FindActivationAssembly(string dllName, DirectoryInfo? directoryInfo)
         {
             // use the backup file if one exists
-            var targetPath = Path.Join(directoryInfo?.FullName, $"{dllName}.bak");
-            var fi = new FileInfo(targetPath);
-            if (fi.Exists) return fi;
-            // fallback to using default
-            targetPath = Path.Join(directoryInfo?.FullName, dllName);
-            fi = new FileInfo(targetPath);
-            return fi.Exists ? fi : null;
+            var expectedPath = Path.Join(directoryInfo?.FullName, dllName);
+            var backupPath = Path.Join(directoryInfo?.FullName, $"{dllName}.bak");
+            var backupFi = new FileInfo(backupPath);
+            if (backupFi.Exists){
+                backupFi.MoveTo(expectedPath, overwrite: true);
+            }
+            var expectedFi = new FileInfo(expectedPath);
+            return expectedFi.Exists ? expectedFi : null;
         }
 
         static void PatchActivationAssembly(string targetFile, bool verbose, bool keepOriginal)
@@ -71,48 +72,43 @@ namespace DxOPatcher
             using (var module = ModuleDefMD.Load(targetFile, moduleContext))
             {
                 var patchedList = new List<string>();
-                var features = module.Types.Where(x => x.FullName.Contains("DxO.PhotoLab.Activation.Feature") || x.FullName.Contains("DxOActivation.Activation"));
+                var features = module.Types.Where(x => x.FullName.Contains("DxO.PhotoLab.Activation.Feature") || x.FullName.Contains("DxOActivation"));
+                Console.WriteLine(string.Join(',', features));
                 foreach (var feature in features)
                 {
-                    var methodsToPatchToTrue = feature?.Methods.Where(x => x.Name.EndsWith("IsValid") || x.Name.EndsWith("HasAnyLicense") || x.Name.EndsWith("IsActivated"));
+                    var methodsToPatchToTrue = feature?.Methods.Where(x => x.HasBody).Where(x => x.Name.EndsWith("IsValid") || x.Name.EndsWith("HasAnyLicense") || x.Name.EndsWith("IsActivated") || x.Name.EndsWith("IsElite"));
                     if (methodsToPatchToTrue != null)
                     {
                         foreach (var method in methodsToPatchToTrue)
                         {
-                            if (verbose)
-                            {
-                                AnsiConsole.MarkupLine(
-                                    $"Located [grey]{method.FullName}[/], patching with [grey]\"return true\"[/].");
-                            }
-                            PatchWithLdcRet(method.Body, 1);
+                            PatchWithLdcRet(method.FullName, method.Body, 1, verbose);
                             patchedList.Add(method.FullName);
                         }
                     }
-                    var methodsToPatchToFalse = feature?.Methods.Where(x => x.Name.EndsWith("IsExpired") || x.Name.EndsWith("IsDemo") || x.Name.EndsWith("IsTemporary") || x.Name == "Check");
+                    var methodsToPatchToFalse = feature?.Methods.Where(x=>x.HasBody).Where(x => x.Name.EndsWith("IsExpired") || x.Name.EndsWith("IsDemo") || x.Name.EndsWith("IsTemporary") || x.Name == "Check");
                     if (methodsToPatchToFalse != null)
                     {
                         foreach (var method in methodsToPatchToFalse)
                         {
-                            if (verbose)
-                            {
-                                AnsiConsole.MarkupLine(
-                                    $"Located [grey]{method.FullName}[/], patching with [grey]\"return false\"[/].");
-                            }
-                            PatchWithLdcRet(method.Body, 0);
+                            PatchWithLdcRet(method.FullName, method.Body, 0, verbose);
                             patchedList.Add(method.FullName);
                         }
                     }
-                    var methodsToPatchToSpecifiedAmount = feature?.Methods.Where(x => x.Name.EndsWith("RemainingDays") || x.Name == "RemainingOfflineDays");
+                    var methodsToPatchToTwo = feature?.Methods.Where(x => x.HasBody).Where(x => x.Name.EndsWith("DemoType"));
+                    if (methodsToPatchToTwo != null)
+                    {
+                        foreach (var method in methodsToPatchToTwo)
+                        {
+                            PatchWithLdcRet(method.FullName, method.Body, 2, verbose); 
+                            patchedList.Add(method.FullName);
+                        }
+                    }
+                    var methodsToPatchToSpecifiedAmount = feature?.Methods.Where(x => x.HasBody).Where(x => x.Name.EndsWith("RemainingDays") || x.Name == "RemainingOfflineDays");
                     if (methodsToPatchToSpecifiedAmount != null)
                     {
                         foreach (var method in methodsToPatchToSpecifiedAmount)
                         {
-                            if (verbose)
-                            {
-                                AnsiConsole.MarkupLine(
-                                    $"Located [grey]{method.FullName}[/], patching with [grey]\"99\"[/].");
-                            }
-                            PatchWithLdcRet(method.Body, 99);
+                            PatchWithLdcRet(method.FullName, method.Body, 99, verbose);
                             patchedList.Add(method.FullName);
                         }
                     }
@@ -153,8 +149,12 @@ namespace DxOPatcher
                 $"[green]Assembly saved as {targetFile}[/] with file size [bold]{new FileInfo(targetFile).Length.Bytes().Humanize()}[/].");
         }
 
-        static void PatchWithLdcRet(CilBody cilBody, int ldcValue)
+        static void PatchWithLdcRet(string methodFullName, CilBody cilBody, int ldcValue, bool verbose = false)
         {
+            if (verbose){
+                AnsiConsole.MarkupLine(
+                    $"Located [grey]{methodFullName}[/], patching with [grey]\"return {ldcValue};\"[/].");
+            }
             cilBody.Instructions.Clear();
             cilBody.ExceptionHandlers.Clear();
             cilBody.Variables.Clear();
