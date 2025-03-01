@@ -1,7 +1,4 @@
 ﻿using System.CommandLine;
-using System.CommandLine.Invocation;
-using System.Security.Cryptography;
-using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using dnlib.DotNet;
 using dnlib.DotNet.Emit;
@@ -9,7 +6,7 @@ using dnlib.DotNet.Writer;
 using Humanizer;
 using Spectre.Console;
 
-namespace AffinityPatcher
+namespace DxOPatcher
 {
     internal class Program
     {
