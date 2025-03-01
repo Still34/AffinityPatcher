@@ -1,12 +1,9 @@
 
 # DxOPatcher
 
-Simple application for patching license activation against DxO PhotoLab. This application patches the following features from the Affinity Persona assembly,
+Simple application for patching license activation against DxO PhotoLab. This application patches the following features from the DxO activation-related assemblies,
 
-- License check (entitlement to run)
-- Eula acceptance
-- Crash report uploading
-- Analytics upload
+- License check
 
 ## Usage
 
