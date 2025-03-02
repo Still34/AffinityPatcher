@@ -4,6 +4,7 @@
 Simple application for patching license activation against DxO PhotoLab. This application patches the following features from the DxO activation-related assemblies,
 
 - License check
+- Elite version check (i.e., upgrades to DxO Elite instead of DxO Essential)
 
 ## Usage
 
