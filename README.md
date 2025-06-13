@@ -1,26 +1,41 @@
 
 # AffinityPatcher
 
-Simple application for patching license activation amongst Affinity v2.x/v1.x products. This application patches the following features from the Affinity Persona assembly,
+Simple application for patching license activation amongst Affinity v2.x/v1.x and DxO products. 
 
-- License check (entitlement to run)
+## Patches
+
+### Affinity 
+- Licensecheck (entitlement to run)
 - Eula acceptance
 - Crash report uploading
 - Analytics upload
 
+### DxO
+- Features
+  - IsActivated
+  - IsTemporary
+  - IsDemo
+  - IsValid
+  - RemainingOfflineDays
+  - RemainingDays
+- Activation
+  - IsElite
+
 ## Usage
 
-- You can get the latest installer/MSIX package from [Serif](http://affin.co/photo2-win-dl).
+- You can get products from all supported companies on their website - whose links are not provided here. Do your own homework.
 
 ```
 Description:
-  Simple application for patching license activation amongst Affinity v2.x/v1.x products.
+  Universal application patcher for Affinity v2.x/v1.x products and DxO PhotoLab.
 
 Usage:
   AffinityPatcher [options]
 
 Options:
-  --input <input> (REQUIRED)  Target Affinity directory (i.e., path containing Photo/Designer.exe).
+  --input <input> (REQUIRED)  Target application directory (i.e., path containing the main executable).
+  --mode <Affinity|DxO>       Select which application to patch. [default: Affinity]
   --verbose                   Enable verbose logging.
   --keep                      Backup original assembly.
   --version                   Show version information
