@@ -42,6 +42,9 @@ Options:
   -?, -h, --help              Show help and usage information
 ```
 
+## Is this safe?
+
+All the patcher does is patch the methods to either true or false - that's it. You can manually fix the assembly based on the function names found in the code yourself. This just makes you and I's life easeier.
 
 ## License
 
