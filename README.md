@@ -1,30 +1,40 @@
 
 # AffinityPatcher
 
-Simple application for patching license activation amongst Affinity v2.x/v1.x and DxO products. 
+Simple application for patching license activation amongst Affinity v2.x/v1.x and DxO products.
+
+## Supported Platforms
+
+- Windows
+- macOS and Linux are not supported.
+    - A Linux build for the patcher is still provided in case you wish to patch the Windows version and run the product under WINE.
 
 ## Patches
 
-### Affinity 
-- Licensecheck (entitlement to run)
+### Affinity
+- License check (entitlement to run)
 - Eula acceptance
 - Crash report uploading
 - Analytics upload
 
 ### DxO
 - Features
-  - IsActivated
-  - IsTemporary
-  - IsDemo
-  - IsValid
-  - RemainingOfflineDays
-  - RemainingDays
+    - IsActivated
+    - IsTemporary
+    - IsDemo
+    - IsValid
+    - RemainingOfflineDays
+    - RemainingDays
 - Activation
-  - IsElite
+    - IsElite
 
 ## Usage
 
-- You can get products from all supported companies on their website - whose links are not provided here. Do your own homework.
+1. Obtain the product installer and install it as usual. The links are not provided here. Do your own homework.
+1. Make sure the desired application is not running.
+1. Extract the patcher to your directory of choice.
+1. Open a of your favorite shell (`cmd`, `powershell`, `pwsh`, etc.) and navigate to the directory; you may need to run your shell as Administrator if your product is installed under `Program Files`.
+1. Execute the patcher with arguments that targets the directory containing the product (e.g., `./AffinityPatcher.exe --input C:\Affinity\Photos --keep --verbose`)
 
 ```
 Description:
@@ -49,4 +59,3 @@ All the patcher does is patch the methods to either true or false - that's it. Y
 ## License
 
 [MIT](https://choosealicense.com/licenses/mit/)
-
