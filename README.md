@@ -33,7 +33,7 @@ Simple application for patching license activation amongst Affinity v2.x/v1.x an
 1. Obtain the product installer and install it as usual. The links are not provided here. Do your own homework.
 1. Make sure the desired application is not running.
 1. Extract the patcher to your directory of choice.
-1. Open a of your favorite shell (`cmd`, `powershell`, `pwsh`, etc.) and navigate to the directory; you may need to run your shell as Administrator if your product is installed under `Program Files`.
+1. Open your favorite shell (`cmd`, `powershell`, `pwsh`, etc.) and navigate to the directory; you may need to run your shell as Administrator if your product is installed under `Program Files`.
 1. Execute the patcher with arguments that targets the directory containing the product (e.g., `./AffinityPatcher.exe --input C:\Affinity\Photos --keep --verbose`)
 
 ```
