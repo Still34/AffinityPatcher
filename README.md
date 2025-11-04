@@ -1,7 +1,7 @@
 
 # AffinityPatcher
 
-Simple application for patching license activation amongst Affinity v2.x/v1.x and DxO products.
+Simple application for patching license activation amongst Affinity v3.x/v2.x/v1.x and DxO products.
 
 ## Supported Platforms
 
@@ -12,12 +12,17 @@ Simple application for patching license activation amongst Affinity v2.x/v1.x an
 ## Patches
 
 ### Affinity
+
 - License check (entitlement to run)
 - Eula acceptance
 - Crash report uploading
 - Analytics upload
+- AppMode (unsure what this does yet; patched to `Ultimate`)
+- Skip linking Affinity ID / Canva account
+    - This means features that require Canva Premium (ones with a crown logo next to the feature) will not work.
 
 ### DxO
+
 - Features
     - IsActivated
     - IsTemporary
@@ -38,7 +43,7 @@ Simple application for patching license activation amongst Affinity v2.x/v1.x an
 
 ```
 Description:
-  Universal application patcher for Affinity v2.x/v1.x products and DxO PhotoLab.
+  Universal application patcher for Affinity v3.x/v2.x/v1.x products and DxO PhotoLab.
 
 Usage:
   AffinityPatcher [options]

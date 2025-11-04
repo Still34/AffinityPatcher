@@ -16,7 +16,7 @@ namespace AffinityPatcher
         static async Task<int> Main(string[] args)
         {
             var rootCommand =
-                new RootCommand("Universal application patcher for Affinity v2.x/v1.x products and DxO PhotoLab.");
+                new RootCommand("Universal application patcher for Affinity v3.x/v2.x/v1.x products and DxO PhotoLab.");
 
             var inputOptions = new Option<DirectoryInfo?>("--input",
                     description: "Target application directory (i.e., path containing the main executable).")
@@ -68,7 +68,7 @@ namespace AffinityPatcher
         {
             AnsiConsole.MarkupLine("[blue]Starting Affinity patching process...[/]");
 
-            var personaAssembly = FindAssembly("Serif.Interop.Persona.dll",directoryInfo);
+            var personaAssembly = FindAssembly("Serif.Interop.Persona.dll", directoryInfo);
             if (personaAssembly == null)
                 throw new FileNotFoundException("Cannot find the required Affinity assembly (Serif.Interop.Persona.dll).");
 
@@ -111,14 +111,15 @@ namespace AffinityPatcher
             using (var module = ModuleDefMD.Load(targetFile, moduleContext))
             {
                 var patchedList = new List<string>();
-                var application = module.Types.FirstOrDefault(x => x.FullName == "Serif.Interop.Persona.Application");
+                var serifApplicationTypeName = "Serif.Interop.Persona.Application";
+                var serifApplicationType = module.Types.FirstOrDefault(x => x.FullName == serifApplicationTypeName);
 
-                var methodsToPatchToTrue = application?.Methods.Where(x =>
+                var methodsToPatchAsTrue = serifApplicationType?.Methods.Where(x =>
                     x.Name == "HasEntitlementToRun" || x.Name == "CheckEula" || x.Name == "CheckAnalytics");
 
-                if (methodsToPatchToTrue != null)
+                if (methodsToPatchAsTrue != null)
                 {
-                    foreach (var method in methodsToPatchToTrue)
+                    foreach (var method in methodsToPatchAsTrue)
                     {
                         if (verbose)
                         {
@@ -131,10 +132,10 @@ namespace AffinityPatcher
                     }
                 }
 
-                var methodsToPatchToFalse = application?.Methods.Where(x => x.Name == "get_AllowsOptInAnalytics");
-                if (methodsToPatchToFalse != null)
+                var methodsToPatchAsFalse = serifApplicationType?.Methods.Where(x => x.Name == "get_AllowsOptInAnalytics" || x.Name == "HasCrashReports");
+                if (methodsToPatchAsFalse != null)
                 {
-                    foreach (var method in methodsToPatchToFalse)
+                    foreach (var method in methodsToPatchAsFalse)
                     {
                         if (verbose)
                         {
@@ -147,7 +148,7 @@ namespace AffinityPatcher
                     }
                 }
 
-                var crashPolicy = application?.Methods.FirstOrDefault(x => x.Name == "GetCrashReportUploadPolicy");
+                var crashPolicy = serifApplicationType?.Methods.FirstOrDefault(x => x.Name == "GetCrashReportUploadPolicy");
                 if (crashPolicy != null)
                 {
                     if (verbose)
@@ -158,6 +159,38 @@ namespace AffinityPatcher
 
                     Patcher.PatchWithLdcRet(crashPolicy.Body, (int)CrashReportUploadPolicy.Never);
                     patchedList.Add(crashPolicy.FullName);
+                }
+
+                var appMode = serifApplicationType?.Methods.FirstOrDefault(x => x.Name == "get_AppMode");
+                if (appMode != null)
+                {
+                    if (verbose)
+                    {
+                        AnsiConsole.MarkupLine(
+                            $"Located [grey]{appMode.FullName}[/], patching as [grey]{ApplicationMode.Ultimate.Humanize()}.[/]");
+                    }
+                    Patcher.PatchWithLdcRet(appMode.Body, (int)ApplicationMode.Ultimate);
+                    patchedList.Add(appMode.FullName);
+                }
+
+                var serifCloudServicesTypeName = "Serif.Interop.Persona.Services.CloudServicesService";
+                var serifCloudServices = module.Types.FirstOrDefault(x => x.FullName == serifCloudServicesTypeName);
+                var serifCloudServicesPatchAsTrue =
+                    serifCloudServices?.Methods.Where(x => x.Name == "HasLinkedAffinityID" || x.Name == "HasEntitlement");
+
+                if (serifCloudServicesPatchAsTrue != null)
+                {
+                    foreach (var method in serifCloudServicesPatchAsTrue)
+                    {
+                        if (verbose)
+                        {
+                            AnsiConsole.MarkupLine(
+                                $"Located [grey]{method.FullName}[/], patching with [grey]\"return true\"[/].");
+                        }
+
+                        Patcher.PatchWithLdcRet(method.Body, 1);
+                        patchedList.Add(method.FullName);
+                    }
                 }
 
                 SaveAssembly(module, tempOutput, patchedList, "Affinity");
