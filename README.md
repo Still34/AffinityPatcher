@@ -1,7 +1,7 @@
 
 # AffinityPatcher
 
-Simple application for patching license activation amongst Affinity v3.x/v2.x/v1.x and DxO products.
+Simple application for patching license activation amongst Affinity v3.x/v2.x/v1.x.
 
 ## Supported Platforms
 
@@ -24,7 +24,7 @@ Simple application for patching license activation amongst Affinity v3.x/v2.x/v1
 ### DxO
 
 > [!NOTE]  
-> Compatibility may vary across versions. The patcher was tested with PhotoLabs v8.x. Newer or older versions have yet to be tested.
+> The implementation is currently broken. See [#9](https://github.com/Still34/AffinityPatcher/issues/9).
 
 - Features
     - IsActivated
