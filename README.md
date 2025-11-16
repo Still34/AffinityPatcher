@@ -17,6 +17,7 @@ Simple application for patching license activation amongst Affinity v3.x/v2.x/v1
 - Eula acceptance
 - Crash report uploading
 - Analytics upload
+    - Note that this does not currently eliminate all analytics upload yet
 - AppMode (unsure what this does yet; patched to `Ultimate`)
 - Skip linking Affinity ID / Canva account
     - This means features that require Canva Premium (ones with a crown logo next to the feature) will not work.
