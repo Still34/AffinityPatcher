@@ -263,6 +263,12 @@ namespace AffinityPatcher
                             Patcher.PatchWithLdcRetVerbose(method.FullName, method.Body, 0, verbose);
                             patchedList.Add(method.FullName);
                         }
+                        // For other return types, do not patch but log when verbose is enabled
+                        else if (verbose)
+                        {
+                            AnsiConsole.MarkupLine(
+                                $"[yellow]Skipping method '{method.FullName}' with unsupported return type '{method.ReturnType.FullName}' (not void/bool).[/]");
+                        }
                     }
                 }
                 
