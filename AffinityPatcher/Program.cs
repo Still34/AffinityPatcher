@@ -68,11 +68,28 @@ namespace AffinityPatcher
         {
             AnsiConsole.MarkupLine("[blue]Starting Affinity patching process...[/]");
 
+            // Persona patching
             var personaAssembly = FindAssembly("Serif.Interop.Persona.dll", directoryInfo);
-            if (personaAssembly == null)
-                throw new FileNotFoundException("Cannot find the required Affinity assembly (Serif.Interop.Persona.dll).");
+            if (personaAssembly != null)
+            {
+                PatchAffinityAssembly(personaAssembly.FullName, verbose: verbose, keepOriginal: keepOriginal);
+            }
+            else
+            {
+                AnsiConsole.MarkupLine("[red]Warning: Serif.Interop.Persona.dll not found. Main patches skipped.[/]");
+            }
 
-            PatchAffinityAssembly(personaAssembly.FullName, verbose: verbose, keepOriginal: keepOriginal);
+            // Patch CloudServices (fix for Issue #11)
+            var cloudServicesAssembly = FindAssembly("Affinity.CloudServices.dll", directoryInfo);
+            if (cloudServicesAssembly != null)
+            {
+                PatchCloudServicesAssembly(cloudServicesAssembly.FullName, verbose, keepOriginal);
+            }
+            else
+            {
+                // If no separate DLL exists, classes may be in Persona (older versions)
+                AnsiConsole.MarkupLine("[yellow]Affinity.CloudServices.dll not found. Skipping extra analytics patches.[/]");
+            }
         }
 
         private static void PatchDxO(DirectoryInfo directoryInfo, bool verbose, bool keepOriginal)
@@ -194,6 +211,62 @@ namespace AffinityPatcher
                 }
 
                 SaveAssembly(module, tempOutput, patchedList, "Affinity");
+            }
+
+            FinalizeAssembly(targetFile, tempOutput);
+        }
+
+        private static void PatchCloudServicesAssembly(string targetFile, bool verbose, bool keepOriginal)
+        {
+            AnsiConsole.MarkupLine("[blue]Patching Affinity Cloud Services to block analytics...[/]");
+
+            if (keepOriginal)
+            {
+                File.Copy(targetFile, targetFile + ".bak", overwrite: true);
+                AnsiConsole.MarkupLine("[green]Backed up Affinity CloudServices assembly.[/]");
+            }
+
+            var moduleContext = ModuleDef.CreateModuleContext();
+            var tempOutput = Path.GetTempFileName();
+            var patchedList = new List<string>();
+
+            using (var module = ModuleDefMD.Load(targetFile, moduleContext))
+            {
+                // Search for analytics-related types
+                var analyticsTypes = module.GetTypes().Where(t => 
+                    t.FullName.Contains("Analytics") || 
+                    t.FullName.Contains("Telemetry") ||
+                    t.FullName.Contains("Snowplow"));
+
+                foreach (var type in analyticsTypes)
+                {
+                    // Search for methods that appear to send or initialize data
+                    var methodsToNeutralize = type.Methods.Where(m => 
+                        m.HasBody && 
+                        (m.Name.StartsWith("Upload") || 
+                         m.Name.StartsWith("Send") || 
+                         m.Name.StartsWith("Track") || 
+                         m.Name.StartsWith("Init") ||
+                         m.Name.Contains("Event")));
+
+                    foreach (var method in methodsToNeutralize)
+                    {
+                        // If it returns void, use a simple Ret
+                        if (method.ReturnType.ElementType == ElementType.Void)
+                        {
+                            Patcher.PatchWithRetVerbose(method.FullName, method.Body, verbose);
+                            patchedList.Add(method.FullName);
+                        }
+                        // If it returns bool, return false (0)
+                        else if (method.ReturnType.ElementType == ElementType.Boolean)
+                        {
+                            Patcher.PatchWithLdcRetVerbose(method.FullName, method.Body, 0, verbose);
+                            patchedList.Add(method.FullName);
+                        }
+                    }
+                }
+                
+                SaveAssembly(module, tempOutput, patchedList, "Affinity.CloudServices");
             }
 
             FinalizeAssembly(targetFile, tempOutput);

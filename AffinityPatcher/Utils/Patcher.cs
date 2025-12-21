@@ -22,4 +22,18 @@ public static class Patcher
 
         PatchWithLdcRet(cilBody, ldcValue);
     }
+    public static void PatchWithRet(CilBody cilBody)
+    {
+        cilBody.Instructions.Clear();
+        cilBody.ExceptionHandlers.Clear();
+        cilBody.Variables.Clear();
+        cilBody.Instructions.Add(Instruction.Create(OpCodes.Ret));
+    }
+
+    public static void PatchWithRetVerbose(string methodFullName, CilBody cilBody, bool verbose = false)
+    {
+        if (verbose)
+            AnsiConsole.MarkupLine($"Located [grey]{methodFullName}[/], patching with [grey]\"return;\" (void)[/].");
+        PatchWithRet(cilBody);
+    }
 }
