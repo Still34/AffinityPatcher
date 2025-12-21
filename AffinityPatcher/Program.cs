@@ -76,7 +76,7 @@ namespace AffinityPatcher
             }
             else
             {
-                AnsiConsole.MarkupLine("[red]Warning: Serif.Interop.Persona.dll not found. Main patches skipped.[/]");
+                AnsiConsole.MarkupLine("[yellow]Warning: Serif.Interop.Persona.dll not found. Main patches skipped.[/]");
             }
 
             // Patch CloudServices (fix for Issue #11)
