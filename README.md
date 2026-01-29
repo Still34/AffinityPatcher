@@ -1,7 +1,10 @@
 
 # AffinityPatcher
 
-Simple application for patching license activation amongst Affinity v3.x/v2.x/v1.x.
+Simple application for patching license activation amongst Affinity v3.x/v2.x.
+
+> [!NOTE]  
+> v1.x is currently unsupported. Support may be added in the future. See [#14](https://github.com/Still34/AffinityPatcher/issues/14).
 
 ## Supported Platforms
 
